@@ -8,12 +8,12 @@ export default defineConfig({
         host: '0.0.0.0', // Позволяет доступ с других устройств
         proxy: {
             '/api': {
-                target: process.env.VITE_API_URL || 'http://192.168.0.101:8000',
+                target: process.env.VITE_API_URL || 'http://localhost:8000',
                 changeOrigin: true,
                 secure: false,
             },
             '/ws': {
-                target: process.env.VITE_WS_URL || 'ws://192.168.0.101:8000',
+                target: process.env.VITE_WS_URL || 'ws://localhost:8000',
                 ws: true,
                 changeOrigin: true,
             }

@@ -54,6 +54,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data)
+          console.log(`Received ${JSON.stringify(data)}`)
         setLastMessage(data)
         onMessage?.(data)
       } catch (e) {
