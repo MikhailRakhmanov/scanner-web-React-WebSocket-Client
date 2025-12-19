@@ -1,250 +1,531 @@
-/* Dark theme variables */
 :root {
-  --bg: #0b0f14;
-  --card: rgba(255, 255, 255, 0.06);
-  --card-hover: rgba(255, 255, 255, 0.1);
-  --text: #e6edf3;
-  --muted: #9aa7b2;
-  --accent: #6ea8fe;
-  --success: #2ecc71;
-  --danger: #ff6b6b;
-  --warning: #f7b955;
-  --shadow: 0 10px 30px rgba(0,0,0,0.35);
-  --radius: 14px;
-  --gap: 12px;
+    --bg-primary: #1a1a1a;
+    --bg-secondary: #2a2a2a;
+    --text-primary: #e0e0e0;
+    --text-muted: #a0a0a0;
+    --accent-connected: #00d4aa;
+    --accent-danger: #ff6b6b;
+    --border: #3a3a3a;
+    --shadow: 0 4px 6px rgba(0,0,0,0.1);
+    --glow: 0 0 12px rgba(0, 212, 170, 0.4);
+    font-size: 16px; /* 1rem = 16px */
 }
 
-* { box-sizing: border-box; }
-html, body, #root { height: 100%; }
+* {
+    box-sizing: border-box;
+}
+
 body {
-  margin: 0;
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-  color: var(--text);
-  background: radial-gradient(80rem 80rem at 120% -10%, #1a2a6c22, transparent),
-              radial-gradient(60rem 60rem at -20% 120%, #b21f1f22, transparent),
-              linear-gradient(180deg, #0b0f14 0%, #0b0f14 100%);
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    min-width: 320px;
+    overflow-x: hidden;
 }
 
 .app {
-  min-width: 320px;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column; /* Базово column, на десктопе row */
+    width: 100%;
 }
 
-/* Layout with sidebar */
-.layout {
-  flex-direction: row;
-  gap: 16px;
-  position: relative;
-}
-
-.sidebar {
-  position: sticky;
-  top: 16px;
-  align-self: flex-start;
-  width: 240px;
-  min-width: 200px;
-  padding: 14px;
-  background: var(--card);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  height: fit-content;
-}
-
-.sidebar-title {
-  font-weight: 700;
-  margin-bottom: 10px;
-}
-
-.sidebar-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.side-link {
-  display: block;
-  text-decoration: none;
-  color: var(--text);
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.06);
-}
-
-.side-link:hover {
-  background: var(--card-hover);
-}
-
-.side-link.active {
-  background: linear-gradient(135deg, #1f3b7a, #6ea8fe);
-  border-color: transparent;
-}
-
-.content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-/* Mobile: stack sidebar on top */
-@media (max-width: 860px) {
-  .layout {
+.main-container {
+    display: flex;
     flex-direction: column;
-  }
-  .sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    width: 280px;
-    max-width: 86vw;
-    border-radius: 0 12px 12px 0;
-    transform: translateX(-110%);
-    transition: transform 0.25s ease;
-    z-index: 40;
-  }
-  .sidebar-open .sidebar {
-    transform: translateX(0);
-  }
-  .menu-button {
-    /*position: fixed;*/
-    top: 16px;
-    left: 16px;
-    z-index: 50;
-    width: 40px; height: 40px;
-    border-radius: 10px;
-    border: 1px solid rgba(255,255,255,0.08);
-    background: linear-gradient(135deg, #1f3b7a, #6ea8fe);
-    color: white;
-    box-shadow: var(--shadow);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 20px;
-  }
-  .backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.95);
-    z-index: 35;
-  }
-  /* hide burger when sidebar is open */
-  .sidebar-open .menu-button { display: none; }
+    flex: 1;
+    width: 100%;
 }
 
-/* Desktop: hide menu button, sidebar always visible */
-@media (min-width: 861px) {
-  .menu-button, .backdrop { display: none; }
-}
-
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.title {
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: 0.2px;
-}
-
-.status {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: var(--card);
-  padding: 8px 12px;
-  border-radius: 9999px;
-  box-shadow: var(--shadow);
-}
-.status-dot {
-  width: 10px; height: 10px; border-radius: 9999px;
-  background: var(--danger);
-  box-shadow: 0 0 12px currentColor;
-}
-.status-dot.connected { background: var(--success); }
-.status-text { color: var(--muted); font-size: 12px; }
-
-.actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.btn {
-  background: linear-gradient(135deg, #1f3b7a, #6ea8fe);
-  color: white;
-  padding: 10px 14px;
-  border-radius: 10px;
-  box-shadow: var(--shadow);
-  font-weight: 600;
-}
-.btn:active { transform: translateY(1px); }
-
-.grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 12px;
-}
-@media (min-width: 560px) {
-  .grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-@media (min-width: 960px) {
-  .grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
+.page {
+    padding: 1rem;
+    flex: 1;
+    width: 100%;
 }
 
 .card {
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
-  background: var(--card);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: var(--radius);
-  padding: 14px;
-  box-shadow: var(--shadow);
-  transition: background 0.2s ease;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    margin: 1rem 0;
+    box-shadow: var(--shadow);
+    transition: box-shadow 0.3s ease;
+    width: 100%;
 }
+
 .card:hover {
-  background: var(--card-hover);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
 }
 
 .card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
 }
+
+.card-title {
+    font-weight: 600;
+    font-size: 1.2rem;
+}
+
 .card-badge {
-  background: rgba(110,168,254,0.15);
-  color: var(--accent);
-  padding: 4px 8px;
-  border-radius: 9999px;
+    background: var(--accent-connected);
+    color: white;
+    padding: 0.5rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    box-shadow: var(--glow);
 }
 
 .products {
-  margin-top: 10px;
-  display: flex; flex-wrap: wrap; gap: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin: 1rem 0;
 }
+
 .chip {
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.08);
-  color: var(--text);
-  padding: 6px 10px;
-  border-radius: 9999px;
-  font-size: 12px;
+    background: var(--border);
+    color: var(--text-primary);
+    padding: 0.5rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.chip:hover {
+    background: var(--accent-connected);
+    box-shadow: var(--glow);
+    transform: translateY(-1px);
+}
+
+.chip.last-scanned {
+    border: 1px solid var(--accent-connected);
+    box-shadow: 0 0 8px rgba(0, 212, 170, 0.3);
+}
+
+.grid {
+    display: grid;
+    gap: 1rem;
+    width: 100%;
+}
+
+.btn {
+    background: var(--accent-connected);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.25rem;
+    border-radius: 12px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0, 212, 170, 0.2);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.btn:hover {
+    background: #00b894;
+    box-shadow: var(--glow), 0 6px 16px rgba(0, 212, 170, 0.3);
+    transform: translateY(-2px);
+}
+
+.btn:disabled {
+    background: var(--border);
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+.status-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--accent-danger);
+    margin-right: 0.5rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 6px rgba(255, 107, 107, 0.3);
+}
+
+.status-dot.connected {
+    background: var(--accent-connected);
+    box-shadow: var(--glow);
+}
+
+.status-text {
+    color: var(--text-muted);
+    font-size: 0.9rem;
 }
 
 .footer {
-  margin-top: 8px;
-  color: var(--muted);
-  font-size: 12px;
-  display: flex; justify-content: space-between; align-items: center;
+    margin-top: 1rem;
+    text-align: right;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.sidebar {
+    width: 250px;
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border);
+    transition: transform 0.3s ease;
+    height: 100vh;
+    top: 0;
+    left: 0;
+    box-shadow: 2px 0 10px rgba(0,0,0,0.2);
+    position: relative; /* Базово relative для десктопа */
+}
+
+.sidebar.closed {
+    transform: translateX(-100%);
+}
+
+.sidebar.open {
+    transform: translateX(0);
+}
+
+.sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 999;
+    opacity: 0;
+    visibility: hidden; /* Добавил visibility для плавности */
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    pointer-events: none; /* Не кликабельный когда скрыт */
+    width: 100vw;
+}
+
+.sidebar-overlay.open {
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important; /* Кликабельный */
+}
+
+.side-link {
+    display: block;
+    padding: 1rem;
+    text-decoration: none;
+    color: var(--text-muted);
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    margin: 0.25rem 0;
+    width: 100%;
+}
+
+.side-link:hover, .side-link.active {
+    background: var(--accent-connected);
+    color: white;
+    box-shadow: var(--glow);
+    transform: translateX(4px);
+}
+
+.input {
+    padding: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    width: 100%;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    transition: all 0.3s ease;
+}
+
+.input:focus {
+    outline: none;
+    border-color: var(--accent-connected);
+    box-shadow: var(--glow);
+}
+
+.header {
+    background: var(--bg-secondary);
+    padding: 1rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    width: 100%;
+}
+
+.main {
+    flex: 1;
+    overflow: auto;
+    padding: 1rem;
+    margin-left: 0; /* Базово 0 */
+    transition: margin-left 0.3s ease;
+    width: 100%;
+}
+
+.main.with-sidebar-closed {
+    margin-left: 0; /* Когда закрыт — без отступа */
+}
+
+.toggle-btn {
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+    display: none; /* Базово скрыт */
+}
+
+.toggle-btn:hover {
+    background: var(--border);
+    box-shadow: var(--glow);
+}
+
+/* Десктоп (>768px): sidebar всегда relative, margin-left для main */
+@media (min-width: 769px) {
+    .app {
+        flex-direction: row; /* Row для sidebar + main */
+    }
+
+    .sidebar {
+        position: relative !important;
+        transform: none !important; /* Игнор open/closed — всегда виден если открыт */
+        z-index: 1;
+    }
+
+    .sidebar-overlay {
+        display: none !important; /* Нет overlay */
+    }
+
+    .toggle-btn {
+        display: block; /* Виден для toggle */
+    }
+
+    .main {
+        margin-left: 250px; /* Отступ когда открыт */
+    }
+
+    .main.with-sidebar-closed {
+        margin-left: 0; /* Полная ширина когда закрыт */
+    }
+
+    body {
+        font-size: 1.0625rem;
+    }
+}
+
+/* Мобильная (<769px): fixed sidebar, overlay активен */
+@media (max-width: 768px) {
+    :root {
+        font-size: 15px;
+    }
+
+    .app {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        position: fixed !important;
+        z-index: 1000 !important;
+        width: 80vw;
+        max-width: 300px;
+    }
+
+    .sidebar.closed {
+        transform: translateX(-100%) !important;
+        visibility: hidden; /* Скрыт полностью */
+        pointer-events: none;
+    }
+
+    .sidebar.open {
+        transform: translateX(0) !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
+    }
+
+    .main-container {
+        width: 100%;
+    }
+
+    .main {
+        margin-left: 0 !important;
+        padding: 0.75rem;
+        width: 100%;
+    }
+
+    .main.with-sidebar-closed {
+        margin-left: 0;
+    }
+
+    .header {
+        padding: 0.75rem;
+    }
+
+    .card {
+        padding: 1rem;
+        margin: 0.75rem 0;
+        border-radius: 0.75rem;
+    }
+
+    .products {
+        gap: 0.5rem;
+    }
+
+    .chip {
+        padding: 0.4rem 0.6rem;
+        font-size: 0.8rem;
+        min-width: fit-content;
+    }
+
+    .sidebar-overlay {
+        display: block !important;
+    }
+
+    .toggle-btn {
+        display: block !important;
+        font-size: 1.25rem;
+    }
+
+    /* 320-480px компакт */
+    @media (max-width: 480px) {
+        .card {
+            padding: 0.75rem;
+            margin: 0.5rem 0;
+        }
+
+        .btn {
+            padding: 0.6rem 1rem;
+            font-size: 0.9rem;
+        }
+
+        .products {
+            gap: 0.375rem;
+            justify-content: flex-start;
+        }
+
+        .header {
+            padding: 0.5rem;
+            gap: 0.5rem;
+        }
+
+        .main {
+            padding: 0.5rem;
+        }
+    }
+
+    /* 320px мин */
+    @media (max-width: 320px) {
+        body {
+            font-size: 14px;
+        }
+
+        .sidebar {
+            width: 85vw;
+        }
+
+        .chip, .btn {
+            font-size: 0.75rem;
+            padding: 0.375rem 0.5rem;
+        }
+    }
+}
+
+/* Стили для react-datepicker: тёмная тема с акцентами */
+.react-datepicker {
+    background-color: var(--bg-secondary) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 1rem !important;
+    box-shadow: var(--shadow) !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+    color: var(--text-primary) !important;
+}
+
+.react-datepicker__header {
+    background-color: var(--bg-primary) !important;
+    border-bottom: 1px solid var(--border) !important;
+    border-radius: 0.75rem 0.75rem 0 0 !important;
+}
+
+.react-datepicker__current-month {
+    color: var(--text-primary) !important;
+    font-weight: 600 !important;
+}
+
+.react-datepicker__day-name,
+.react-datepicker__day {
+    color: var(--text-primary) !important;
+}
+
+.react-datepicker__day:hover,
+.react-datepicker__month-text:hover,
+.react-datepicker__quarter-text:hover,
+.react-datepicker__year-text:hover {
+    background-color: var(--accent-connected) !important;
+    color: white !important;
+    box-shadow: var(--glow) !important;
+    border-radius: 0.5rem !important;
+}
+
+.react-datepicker__day--selected,
+.react-datepicker__day--in-selecting-range,
+.react-datepicker__day--in-range,
+.react-datepicker__month-text--selected,
+.react-datepicker__month-text--in-selecting-range,
+.react-datepicker__month-text--in-range,
+.react-datepicker__quarter-text--selected,
+.react-datepicker__quarter-text--in-selecting-range,
+.react-datepicker__quarter-text--in-range,
+.react-datepicker__year-text--selected,
+.react-datepicker__year-text--in-range {
+    background-color: var(--accent-connected) !important;
+    color: white !important;
+    box-shadow: var(--glow) !important;
+}
+
+.react-datepicker__day--disabled,
+.react-datepicker__day--outside-month {
+    color: var(--text-muted) !important;
+}
+
+.react-datepicker__navigation {
+    color: var(--accent-connected) !important;
+}
+
+.react-datepicker__navigation:hover {
+    background-color: var(--border) !important;
+    border-radius: 50% !important;
+}
+
+.react-datepicker__triangle {
+    fill: var(--bg-secondary) !important;
+    stroke: var(--border) !important;
+}
+
+/* Адаптив: на мобильных уменьшить размер */
+@media (max-width: 768px) {
+    .react-datepicker {
+        font-size: 0.875rem !important;
+        width: 280px !important;
+        max-width: 90vw !important;
+    }
+
+    .react-datepicker__header {
+        padding: 0.75rem !important;
+    }
+
+    .react-datepicker__day {
+        padding: 0.5rem !important;
+    }
 }

@@ -1,4 +1,3 @@
-// src/hooks/useWebSocket.ts
 import { useRef, useCallback, useMemo, useEffect, useState } from 'react';
 import type { DependencyList } from 'react';
 import { auth } from '../services/auth';
@@ -11,18 +10,16 @@ export interface UseWebSocketProps {
     onMessage?: (data: unknown) => void;
 }
 
-export function useWebSocket({
-                                 maxRetries = 10,
-                                 autoReconnect = true,
-                                 onMessage,
-                             }: UseWebSocketProps = {}) {
+export function useWebSocket({ maxRetries = 10, autoReconnect = true, onMessage }: UseWebSocketProps = {}) {
     const wsRef = useRef<WebSocket | null>(null);
     const retriesRef = useRef(0);
     const closedByUserRef = useRef(false);
     const [isConnected, setIsConnected] = useState(false);
     const [lastMessage, setLastMessage] = useState<unknown>(null);
-
     const url = useMemo(() => BACKEND_WS_URL + '/ws', []);
+    const onMessageRef = useRef(onMessage); // Ref для onMessage, чтобы избежать ререндеров
+
+    onMessageRef.current = onMessage; // Обновляем ref при изменении
 
     const cleanup = useCallback(() => {
         if (wsRef.current) {
@@ -39,17 +36,14 @@ export function useWebSocket({
         const token = auth.getToken();
         console.log('Attempt connect: token present?', !!token);
         if (!token) {
-            console.warn('No token — skip WS connect');
+            console.warn('No token — skip WS register');
             setIsConnected(false);
             return;
         }
-
-        // Guard: Если уже подключено — не дублируй
         if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
             console.log('Already connected — skip');
             return;
         }
-
         cleanup();
         closedByUserRef.current = false;
         console.log('Creating WS to', url);
@@ -60,11 +54,7 @@ export function useWebSocket({
             console.log('WS opened — sending register');
             setIsConnected(true);
             retriesRef.current = 0;
-            const registerMsg = {
-                event: 'register',
-                token: token,
-                is_input: false,
-            };
+            const registerMsg = { event: 'register', token: token, is_input: false };
             ws.send(JSON.stringify(registerMsg));
             console.log('Sent register with token:', registerMsg);
         };
@@ -74,7 +64,7 @@ export function useWebSocket({
                 const data = JSON.parse(event.data);
                 console.log(`Received: ${JSON.stringify(data)}`);
                 setLastMessage(data);
-                onMessage?.(data);
+                onMessageRef.current?.(data); // Используем ref
             } catch (e) {
                 console.error('Parse error:', e);
             }
@@ -93,13 +83,13 @@ export function useWebSocket({
                     const timeout = Math.min(30000, 1000 * Math.pow(2, attempt));
                     console.log(`Reconnect #${attempt + 1} in ${timeout}ms (code: ${event.code})`);
                     retriesRef.current += 1;
-                    setTimeout(() => connect(), timeout);
+                    setTimeout(connect, timeout); // Без deps
                 } else {
                     console.error('Max retries — WS failed');
                 }
             }
         };
-    }, [cleanup, maxRetries, autoReconnect, url]); // Убрал onMessage из deps (стабильный колбэк)
+    }, [cleanup, maxRetries, autoReconnect, url]); // Убрал onMessage из deps
 
     const disconnect = useCallback(() => {
         closedByUserRef.current = true;
@@ -116,19 +106,12 @@ export function useWebSocket({
     }, []);
 
     useEffect(() => {
-        const timer = setTimeout(connect, 500); // Задержка для стабильности
+        const timer = setTimeout(connect, 500);
         return () => {
             clearTimeout(timer);
             disconnect();
         };
-    }, [connect, disconnect] as DependencyList);
+    }, []); // Пустые deps: монтирование/демонтирование
 
-    return {
-        isConnected,
-        lastMessage,
-        sendJson,
-        reconnect: connect,
-        disconnect,
-        url
-    };
+    return { isConnected, lastMessage, sendJson, reconnect: connect, disconnect, url };
 }

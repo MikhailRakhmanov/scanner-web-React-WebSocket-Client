@@ -1,141 +1,102 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import Header from '../components/Header'
-import ConnectionStatus from '../components/ConnectionStatus'
-import PairList from '../components/PairList'
+import { useCallback, useEffect, useState, useRef } from 'react';
+import Header from '../components/Header';
+import PairList from '../components/PairList';
+import { useWS } from '../contexts/WSContext';
+import type { PlatformId, ProductScan } from '../types';
 
-import { useWebSocket } from '../hooks/useWebSocket'
-import { api } from '../services/api'
-import type { PlatformId, PlatformMap, ProductScan, WSMessage } from '../types'
-
-const LS_KEY_PRODUCTS = 'scanner_products'
-const LS_KEY_PLATFORM = 'scanner_selected_platform'
-const PAIRS_TTL_MS = 10 * 60 * 1000
+const LS_KEY_PRODUCTS = 'scanner_products';
+const LS_KEY_PLATFORM = 'scanner_selected_platform';
+const PAIRS_TTL_MS = 10 * 60 * 1000;
 
 export default function Dashboard() {
-  const [selectedPlatform, setSelectedPlatform] = useState<PlatformId | null>(null)
-  const [products, setProducts] = useState<ProductScan[]>([])
+    const [selectedPlatform, setSelectedPlatform] = useState<PlatformId | null>(null);
+    const [products, setProducts] = useState<ProductScan[]>([]);
+    const [scannersCount, setScannersCount] = useState(0);
+    const hasScannersConnectedRef = useRef(false);
 
-  const handleWS = useCallback((msg: WSMessage) => {
-    const type = (msg as any).type || undefined
+    const { messages } = useWS();
 
-    if ((msg as any).data?.platform !== undefined && (msg as any).data?.product !== undefined && type !== 'change_platform') {
-      const { platform, product, scanId } = (msg as any).data as { platform: PlatformId; product: number; scanId?: number }
-      if (selectedPlatform === null) {
-        setSelectedPlatform(platform)
-      }
-      if (selectedPlatform !== null && platform === selectedPlatform) {
-        setProducts(prev => [{ product, scanId: scanId ?? (prev[0]?.scanId ?? 0) + 1 }, ...prev])
-      }
-      return
-    }
+    // handleWS на основе messages (реакт на новые)
+    useEffect(() => {
+        if (messages.length === 0) return;
+        const latestMsg = messages[messages.length - 1];
+        console.log('Latest WS msg:', latestMsg);
 
-    if ((msg as any).data?.platform !== undefined && (msg as any).data?.pairs) {
-      const { platform, pairs } = (msg as any).data as { platform: PlatformId; pairs: PlatformMap }
-      setSelectedPlatform(platform)
-      const list = (pairs[platform] || [])
-      setProducts(list)
-      return
-    }
-
-    if (type === 'new_pair' && (msg as any).data) {
-      const { platform, product, scanId } = (msg as any).data as { platform: PlatformId; product: number; scanId?: number }
-      if (selectedPlatform !== null && platform === selectedPlatform) {
-        setProducts(prev => [{ product, scanId: scanId ?? (prev[0]?.scanId ?? 0) + 1 }, ...prev])
-      }
-      return
-    }
-
-    if (type === 'change_platform' && (msg as any).data?.pairs) {
-      const { platform, pairs } = (msg as any).data as { platform: PlatformId; pairs: PlatformMap }
-      setSelectedPlatform(platform)
-      const list = (pairs[platform] || [])
-      setProducts(list)
-      return
-    }
-  }, [selectedPlatform])
-
-  const { isConnected, url, reconnect } = useWebSocket({ onMessage: handleWS })
-
-  useEffect(() => {
-    try {
-      const storedPlatform = localStorage.getItem(LS_KEY_PLATFORM)
-      const storedProducts = localStorage.getItem(LS_KEY_PRODUCTS)
-
-      if (storedPlatform !== null) {
-        const platformValue = Number(storedPlatform)
-        if (!Number.isNaN(platformValue)) {
-          setSelectedPlatform(platformValue as PlatformId)
+        try {
+            const event = (latestMsg as any).event || (latestMsg as any).type;
+            if (event === 'scanner_connected' && !hasScannersConnectedRef.current) {
+                hasScannersConnectedRef.current = true;
+                setScannersCount(1); // Только +1 на первое подключение
+                return;
+            }
+            if (event === 'new_product' || event === 'new_pair') {
+                const data = (latestMsg as any).data || latestMsg;
+                const platform = data.platform || data.data?.platform;
+                const productObj = data.product || data.data?.product;
+                const product = typeof productObj === 'object' ? productObj.id : productObj;
+                const scanId = data.scanId || Date.now();
+                console.log('Parsed new_pair:', { platform, product, scanId });
+                if (selectedPlatform === null) setSelectedPlatform(platform);
+                if (selectedPlatform !== null && platform === selectedPlatform) {
+                    setProducts((prev) => [{ product, scanId }, ...prev.slice(0, 9)]);
+                }
+                return;
+            }
+            if (event === 'change_platform') {
+                const data = (latestMsg as any).data || latestMsg;
+                const platform = data.platform;
+                // Фикс: берём массив из data.pairs[platform] (PlatformMap)
+                const pairsArray = data.pairs?.[platform] || data.products || [];
+                setSelectedPlatform(platform);
+                const list = Array.isArray(pairsArray) ? pairsArray : []; // Безопасная проверка
+                setProducts(list.map((p: any) => ({ product: p.product || p.id, scanId: p.scanId || p.id })));
+                console.log('Parsed change_platform:', { platform, productsCount: list.length });
+                return;
+            }
+        } catch (e) {
+            console.error('Ошибка обработки WS msg:', e, latestMsg); // Лог ошибки, но не вылет
         }
-      }
+    }, [messages, selectedPlatform]);
 
-      if (storedProducts) {
-        const parsed = JSON.parse(storedProducts) as { products: ProductScan[]; ts: number }
-        const now = Date.now()
-        if (parsed && Array.isArray(parsed.products) && typeof parsed.ts === 'number') {
-          if (now - parsed.ts <= PAIRS_TTL_MS) {
-            setProducts(parsed.products)
-          } else {
-            localStorage.removeItem(LS_KEY_PRODUCTS)
-          }
+    useEffect(() => {
+        try {
+            const storedPlatform = localStorage.getItem(LS_KEY_PLATFORM);
+            if (storedPlatform !== null) {
+                const platformValue = Number(storedPlatform);
+                if (!Number.isNaN(platformValue)) setSelectedPlatform(platformValue as PlatformId);
+            }
+            const storedProducts = localStorage.getItem(LS_KEY_PRODUCTS);
+            if (storedProducts) {
+                const parsed = JSON.parse(storedProducts) as { products: ProductScan[]; ts: number };
+                const now = Date.now();
+                if (parsed && Array.isArray(parsed.products) && typeof parsed.ts === 'number' && now - parsed.ts <= PAIRS_TTL_MS) {
+                    setProducts(parsed.products);
+                } else {
+                    localStorage.removeItem(LS_KEY_PRODUCTS);
+                }
+            }
+        } catch (e) {
+            console.error('Ошибка чтения из localStorage', e);
         }
-      }
-    } catch (e) {
-      console.error('Ошибка чтения пар из localStorage', e)
-    }
-  }, [])
+    }, []);
 
-  useEffect(() => {
-    try {
-      if (selectedPlatform !== null) {
-        localStorage.setItem(LS_KEY_PLATFORM, String(selectedPlatform))
-      }
-      const payload = { products, ts: Date.now() }
-      localStorage.setItem(LS_KEY_PRODUCTS, JSON.stringify(payload))
-    } catch (e) {
-      console.error('Ошибка сохранения пар в localStorage', e)
-    }
-  }, [products, selectedPlatform])
+    useEffect(() => {
+        try {
+            if (selectedPlatform !== null) localStorage.setItem(LS_KEY_PLATFORM, String(selectedPlatform));
+            localStorage.setItem(LS_KEY_PRODUCTS, JSON.stringify({ products, ts: Date.now() }));
+        } catch (e) {
+            console.error('Ошибка сохранения в localStorage', e);
+        }
+    }, [products, selectedPlatform]);
 
-  const loadPairs = useCallback(async () => {
-    try {
-      if (selectedPlatform === null) return
-      const params: { date: string; platform?: number } = { date: new Date().toISOString().slice(0,10), platform: selectedPlatform }
-      const data = await api.getPairs(params)
-      const list = (data as PlatformMap)[selectedPlatform] || []
-      setProducts(list)
-    } catch (e) {
-      console.error('Ошибка загрузки пар', e)
-    }
-  }, [selectedPlatform])
-
-  useEffect(() => {
-    if (selectedPlatform !== null) {
-      void loadPairs()
-    }
-  }, [selectedPlatform, loadPairs])
-
-  useEffect(() => {
-    void loadPairs()
-  }, [loadPairs])
-
-  const handleClearProducts = () => {
-    setProducts([])
-    try {
-      localStorage.removeItem(LS_KEY_PRODUCTS)
-    } catch (e) {
-      console.error('Ошибка очистки пар в localStorage', e)
-    }
-  }
-
-  return (
-    <div className="page">
-      <Header title="Сканер пар — мониторинг"/>
-      <ConnectionStatus connected={isConnected} url={url} onReconnect={reconnect} />
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
-        <button className="btn" onClick={handleClearProducts}>Сбросить данные</button>
-      </div>
-      {/*<ScannerInfo total={scannersTotal} items={scannerItems} onRefresh={loadScanners} />*/}
-      <PairList platform={selectedPlatform} products={products} />
-    </div>
-  )
+    return (
+        <div className="page">
+            <Header title="Мониторинг" />
+            {/* Простой статус сканнеров — мелко, под заголовком */}
+            <div className="status-text" style={{ marginBottom: 12, fontSize: '0.9rem', opacity: 0.8 }}>
+                Подключено сканнеров: {scannersCount || 1}
+            </div>
+            <PairList platform={selectedPlatform} products={products} />
+        </div>
+    );
 }

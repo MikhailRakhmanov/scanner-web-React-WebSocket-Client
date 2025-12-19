@@ -1,6 +1,5 @@
-// src/contexts/AuthContext.tsx
 import React, { createContext, useContext, useState, type ReactNode } from 'react';
-import { auth } from '../services/auth'; // Импорт вашего auth
+import { auth } from '../services/auth';
 
 interface AuthContextType {
     isAuthenticated: boolean;
@@ -13,12 +12,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-    // Авто-проверка localStorage при монтировании
     React.useEffect(() => {
-        if (!auth || typeof auth.getToken !== 'function') {
-            console.error('Auth module not loaded.');
-            return;
-        }
         const token = auth.getToken();
         const login = auth.getLogin();
         if (token && login) {
