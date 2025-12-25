@@ -1,8 +1,7 @@
 import { useRef, useCallback, useMemo, useEffect, useState } from 'react';
-import type { DependencyList } from 'react';
 import { auth } from '../services/auth';
 
-const BACKEND_WS_URL = import.meta.env.VITE_BACKEND_WS_URL || 'ws://localhost:8000';
+const BACKEND_WS_URL = import.meta.env.VITE_BACKEND_WS_URL || 'ws://192.168.0.103:8000';
 
 export interface UseWebSocketProps {
     maxRetries?: number;
@@ -62,16 +61,20 @@ export function useWebSocket({ maxRetries = 10, autoReconnect = true, onMessage 
         ws.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
-                console.log(`Received: ${JSON.stringify(data)}`);
+                console.log(`WS Received:`, data);
+
+                // ✅ Если бэк выдал JWT — сохраняем его!
+                if (data.token && data.login) {
+                    auth.setToken(data.token);
+                    auth.setLogin(data.login);
+                    console.log('✅ WS Auth success:', data.login);
+                }
+
                 setLastMessage(data);
-                onMessageRef.current?.(data); // Используем ref
+                onMessageRef.current?.(data);
             } catch (e) {
                 console.error('Parse error:', e);
             }
-        };
-
-        ws.onerror = (event) => {
-            console.error('WS error:', event);
         };
 
         ws.onclose = (event) => {

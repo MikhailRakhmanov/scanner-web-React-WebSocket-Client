@@ -15,7 +15,7 @@ export default defineConfig({
     },
     server: {
         port: 5173,
-        host: true, // Для IP-доступа
+        host: true,
         proxy: {
             '/auth': {
                 target: 'http://localhost:8000',
@@ -23,7 +23,7 @@ export default defineConfig({
                 secure: false,
             },
             '/ws': {
-                target: 'ws://localhost:8000',
+                target: 'http://localhost:8000',
                 ws: true,
                 changeOrigin: true,
             },

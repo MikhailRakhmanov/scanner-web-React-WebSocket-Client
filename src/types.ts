@@ -23,3 +23,21 @@ export interface ScannerInfoResponse {
     scanners: any[];
     total_scanners: number;
 }
+
+export interface HistoryItem {
+    id: number;
+    login: string;
+    platform: PlatformId;
+    product: ProductId;
+    timestamp: string;
+    legacy_synced: number;     // 1=успех, 0=в процессе, -1=ошибка
+    legacy_integration_error?: string | null;
+}
+
+export interface HistoryResponse {
+    items: HistoryItem[];
+    total: number;
+    page: number;
+    size: number;
+    pages: number;
+}

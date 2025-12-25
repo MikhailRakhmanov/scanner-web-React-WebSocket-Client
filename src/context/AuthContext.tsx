@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, type ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { auth } from '../services/auth';
 
 interface AuthContextType {
@@ -12,23 +12,28 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-    React.useEffect(() => {
+    useEffect(() => {
         const token = auth.getToken();
         const login = auth.getLogin();
         if (token && login) {
-            console.log('Auto-auth from localStorage:', login);
+            console.log('✅ AuthContext: Auto-auth success:', login);
             setIsAuthenticated(true);
         }
     }, []);
 
     return (
-        <AuthContext.Provider value={{ isAuthenticated, setIsAuthenticated, login: auth.getLogin() }}>
+        <AuthContext.Provider value={{
+            isAuthenticated,
+            setIsAuthenticated,
+            login: auth.getLogin()
+        }}>
             {children}
         </AuthContext.Provider>
     );
 }
 
-export function useAuth() {
+// ✅ ЭКСПОРТ useAuth — ОБЯЗАТЕЛЬНО!
+export function useAuth(): AuthContextType {
     const context = useContext(AuthContext);
     if (context === undefined) {
         throw new Error('useAuth must be used within an AuthProvider');

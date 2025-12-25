@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, useRef } from 'react';
 import Header from '../components/Header';
 import PairList from '../components/PairList';
-import { useWS } from '../contexts/WSContext';
+import { useWS } from '../context/WSContext';
 import type { PlatformId, ProductScan } from '../types';
 
 const LS_KEY_PRODUCTS = 'scanner_products';

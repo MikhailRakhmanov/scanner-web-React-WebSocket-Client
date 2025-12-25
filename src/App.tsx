@@ -1,123 +1,92 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { WSProvider, useWS } from './contexts/WSContext';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { WSProvider, useWS } from './context/WSContext';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Devices from './pages/Devices';
-import History from './pages/History';
+import HistoryPage from './pages/HistoryPage';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
-import ConnectionStatus from './components/ConnectionStatus';
+import ScannerStatus from "./components/ScannerStatus.tsx";
 import { useWebSocket } from './hooks/useWebSocket';
 import { auth } from './services/auth';
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-    const { isAuthenticated } = useAuth();
-    return isAuthenticated ? <>{children}</> : <Navigate to="/" replace />;
-}
-
-function ProtectedLayout({ children }: { children: React.ReactNode }) {
-    const { login } = useAuth();
-    const [isSidebarOpen, setIsSidebarOpen] = useState(false); // По умолчанию закрыт везде
-    const { addMessage } = useWS();
+function ProtectedLayout() {
+    // ✅ ВСЕ ХУКИ ПЕРЕД ЛЮБЫМИ ВОЗВРАТАМИ!
+    const { isAuthenticated, login } = useAuth();
+    const { addMessage, hasScannerConnection } = useWS();
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
 
-    // Проверка ширины экрана
+    // ✅ useCallback ДО возвратов!
+    const globalOnMessage = useCallback((data: unknown) => {
+        addMessage(data);
+    }, [addMessage]);
+
+    // ✅ useWebSocket ДО возвратов!
+    const { isConnected, url, reconnect } = useWebSocket({ onMessage: globalOnMessage });
+
+    // ✅ useEffect ДО возвратов!
     useEffect(() => {
         const checkMobile = () => setIsMobile(window.innerWidth < 769);
         checkMobile();
         window.addEventListener('resize', checkMobile);
-        return () => window.removeEventListener('resize', checkMobile);
+        const timer = setTimeout(() => setIsLoading(false), 200);
+        return () => {
+            window.removeEventListener('resize', checkMobile);
+            clearTimeout(timer);
+        };
     }, []);
 
-    // Опционально: auto-open на десктопе (раскомментируйте, если нужно)
-    // useEffect(() => {
-    //     if (!isMobile) setIsSidebarOpen(true);
-    // }, [isMobile]);
+    // ✅ ТЕПЕРЬ возвраты безопасны — все хуки уже вызваны!
+    if (!isAuthenticated) {
+        return <Navigate to="/" replace />;
+    }
 
-    // Блокировка скролла на мобильных при открытом
-    useEffect(() => {
-        if (isSidebarOpen && isMobile) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = 'unset';
-        }
-        return () => { document.body.style.overflow = 'unset'; };
-    }, [isSidebarOpen, isMobile]);
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-screen" style={{background: 'var(--bg-primary)'}}>
+                <div className="text-white text-xl animate-pulse">🔄 Инициализация...</div>
+            </div>
+        );
+    }
 
-    const globalOnMessage = useCallback((data: unknown) => {
-        console.log('Global WS received:', data);
-        addMessage(data);
-    }, [addMessage]);
-
-    const { isConnected, url, reconnect } = useWebSocket({ onMessage: globalOnMessage });
-
-    const handleLogout = () => {
-        auth.clear();
-        window.location.href = '/';
-    };
-
-    const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
-
-    const toggleIcon = isSidebarOpen ? '×' : '☰';
+    const currentScannerStatus = !isConnected ? 'refused' : hasScannerConnection ? 'connected' : 'unknown';
 
     return (
-        <div className="app"> {/* Добавлен flex-контейнер для всего */}
+        <div className="app">
             <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-            <div
-                className={`sidebar-overlay ${isSidebarOpen && isMobile ? 'open' : ''}`}
-                onClick={() => setIsSidebarOpen(false)}
-            />
-            <div className="main-container"> {/* Flex для header + main */}
+            <div className="main-container">
                 <header className="header">
                     <div className="flex justify-between items-center w-full">
                         <div className="flex items-center gap-2">
-                            {/* Toggle-кнопка всегда видна (для десктопа тоже) */}
-                            <button className="toggle-btn" onClick={toggleSidebar}>
-                                {toggleIcon}
+                            <button className="toggle-btn" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+                                {isSidebarOpen ? '×' : '☰'}
                             </button>
-                            <Header title={`Сканер пар — ${login || 'Гость'}`} />
+                            <Header title={`Сканер пар — ${login}`} />
+                            <ScannerStatus scannerStatus={currentScannerStatus} url={url} onReconnect={reconnect} />
                         </div>
-                        <div className="flex items-center gap-4">
-                            <ConnectionStatus connected={isConnected} url={url} onReconnect={reconnect} />
-                            <button className="btn" onClick={handleLogout}>Выйти</button>
-                        </div>
+                        <button className="btn" onClick={() => {
+                            auth.clear();
+                            window.location.href = '/';
+                        }}>
+                            Выйти
+                        </button>
                     </div>
                 </header>
-                <main className={`main ${!isSidebarOpen ? 'with-sidebar-closed' : ''}`}>{children}</main>
+                <main className={`main ${!isSidebarOpen ? 'with-sidebar-closed' : ''}`}>
+                    <Outlet />
+                </main>
             </div>
         </div>
     );
 }
 
-function AppContent() {
+function LoginRedirect() {
     const { isAuthenticated } = useAuth();
-    const navigate = useNavigate();
-
-    useEffect(() => {
-        if (isAuthenticated) {
-            navigate('/dashboard', { replace: true });
-        }
-    }, [isAuthenticated, navigate]);
-
-    return (
-        <Routes>
-            <Route path="/" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />} />
-            <Route path="/dashboard/*" element={
-                <ProtectedRoute>
-                    <ProtectedLayout>
-                        <Routes>
-                            <Route path="" element={<Dashboard />} />
-                            <Route path="history" element={<History />} />
-                            <Route path="devices" element={<Devices />} />
-                        </Routes>
-                    </ProtectedLayout>
-                </ProtectedRoute>
-            } />
-            <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/"} replace />} />
-        </Routes>
-    );
+    return isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />;
 }
 
 export default function App() {
@@ -125,7 +94,15 @@ export default function App() {
         <AuthProvider>
             <WSProvider>
                 <Router>
-                    <AppContent />
+                    <Routes>
+                        <Route path="/" element={<LoginRedirect />} />
+                        <Route path="/dashboard" element={<ProtectedLayout />}>
+                            <Route index element={<Dashboard />} />
+                            <Route path="history" element={<HistoryPage />} />
+                            <Route path="devices" element={<Devices />} />
+                        </Route>
+                        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                    </Routes>
                 </Router>
             </WSProvider>
         </AuthProvider>
