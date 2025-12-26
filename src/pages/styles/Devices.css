@@ -1,0 +1,37 @@
+.devices-page {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.devices-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+}
+
+.device-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border);
+}
+
+.device-status-info {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-family: 'SF Mono', monospace;
+}
+
+.device-error-text {
+    color: var(--accent-danger);
+    font-size: 0.85rem;
+}
+
+.device-loading-inline {
+    margin-left: 1rem;
+    font-size: 0.85rem;
+    color: var(--accent-connected);
+}

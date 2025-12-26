@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Header from '../components/Header';
 import { api } from '../services/api';
+import './styles/Devices.css'; // Импорт локальных стилей
 
 export default function Devices() {
     const [loading, setLoading] = useState(false);
@@ -27,30 +28,38 @@ export default function Devices() {
     }, [load]);
 
     return (
-        <div className="page">
+        <div className="devices-page">
             <Header title="Устройства" />
+
             <div className="card">
                 <div className="card-header">
                     <div className="card-title">Всего устройств</div>
                     <div className="card-badge">{total}</div>
                 </div>
-                <div className="footer" style={{ marginTop: 8 }}>
+                <div className="device-card-footer">
                     <button className="btn" onClick={load} disabled={loading}>Обновить</button>
-                    {loading && <span className="status-text">Загрузка...</span>}
-                    {error && <span style={{ color: 'var(--danger)' }}>{error}</span>}
+                    {loading && <span className="device-loading-inline">Загрузка...</span>}
+                    {error && <span className="device-error-text">{error}</span>}
                 </div>
             </div>
-            <div className="grid">
-                {items.length === 0 && !loading && <div className="card">Нет данных об устройствах</div>}
+
+            <div className="devices-grid">
+                {items.length === 0 && !loading && (
+                    <div className="card">Нет данных об устройствах</div>
+                )}
                 {items.map((it, idx) => (
                     <div key={idx} className="card">
                         <div className="card-header">
                             <div className="card-title">{it.name || it.id || `Device #${idx + 1}`}</div>
                             {it.status && <div className="card-badge">{it.status}</div>}
                         </div>
-                        <div className="footer">
-                            <span className="status-text">{it.ip || it.address || '—'}</span>
-                            {it.last_seen && <span className="status-text">Last: {new Date(it.last_seen).toLocaleString()}</span>}
+                        <div className="device-card-footer">
+                            <span className="device-status-info">{it.ip || it.address || '—'}</span>
+                            {it.last_seen && (
+                                <span className="device-status-info">
+                                    {new Date(it.last_seen).toLocaleString()}
+                                </span>
+                            )}
                         </div>
                     </div>
                 ))}

@@ -1,8 +1,11 @@
 export type PlatformId = number;
+
 export type ProductId = number;
+
 export interface ProductScan {
-    scanId: number;
+    scanId: number | string; // Расширяем до string, так как Date.now() или UUID могут быть строками
     product: ProductId;
+    timestamp?: number;      // Добавляем это поле (опционально)
 }
 export type PlatformMap = Record<PlatformId, ProductScan[]>;
 export interface WSNewPairData {

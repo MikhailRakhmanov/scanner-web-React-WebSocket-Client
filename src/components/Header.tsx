@@ -1,3 +1,6 @@
+import React from 'react';
+import './styles/Header.css'; // Подключаем локальные стили
+
 type Props = {
     title: string;
     right?: React.ReactNode;
@@ -5,9 +8,9 @@ type Props = {
 
 export default function Header({ title, right }: Props) {
     return (
-        <div className="flex justify-between items-center w-full">
-            <h1 className="card-title">{title}</h1>
-            {right && <div>{right}</div>}
-        </div>
+        <header className="header">
+            <h1 className="header-title">{title}</h1>
+            {right && <div className="header-right">{right}</div>}
+        </header>
     );
 }

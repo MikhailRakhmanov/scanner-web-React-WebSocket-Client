@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
-import type { HistoryItem, HistoryResponse } from "../types";
+import type { HistoryResponse } from "../types";
 import { api } from "../services/api";
+import './styles/HistoryPage.css'; // Импорт локальных стилей
 
 type SortField = 'id' | 'login' | 'platform' | 'product' | 'timestamp' | 'legacy_synced' | 'legacy_integration_error';
 
@@ -29,11 +30,12 @@ const HistoryPage: React.FC = () => {
         is_overwrite: undefined, sort: 'timestamp', order: 'desc'
     });
     const [showFilters, setShowFilters] = useState(false);
+
     const filtersRef = useRef<HTMLDivElement>(null);
     const buttonRef = useRef<HTMLButtonElement>(null);
-
     const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
+    // Закрытие фильтров при клике вне области
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             const target = event.target as Node;
@@ -46,6 +48,7 @@ const HistoryPage: React.FC = () => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    // Установка даты по умолчанию
     useEffect(() => {
         setFilters(prev => ({ ...prev, date_from: today, date_to: today }));
     }, [today]);
@@ -56,7 +59,7 @@ const HistoryPage: React.FC = () => {
             const data = await api.getHistory(currentFilters);
             setHistory(data);
         } catch (error) {
-            console.error('Ошибка загрузки:', error);
+            console.error('Ошибка загрузки истории:', error);
         } finally {
             setLoading(false);
         }
@@ -114,16 +117,28 @@ const HistoryPage: React.FC = () => {
         <div className="history-container">
             <div className="history-header">
                 <h1 className="history-title">История сканирований</h1>
-                <div className="history-stats">Всего: <strong>{history.total.toLocaleString()}</strong></div>
+                <div className="history-stats">
+                    Всего: <strong>{history.total.toLocaleString()}</strong>
+                </div>
             </div>
 
             <div className="history-controls">
-                <button ref={buttonRef} className="history-btn" onClick={() => setShowFilters(!showFilters)}>
-                    {showFilters ? 'Скрыть' : '🔧 Фильтры'}
+                <button
+                    ref={buttonRef}
+                    className="history-btn"
+                    onClick={() => setShowFilters(!showFilters)}
+                >
+                    {showFilters ? 'Скрыть фильтры' : '🔧 Фильтры'}
                 </button>
-                <div className="flex gap-2">
+                <div className="history-size-selector">
                     {[50, 100, 200].map(s => (
-                        <button key={s} className={`history-btn ${filters.size === s ? 'opacity-100 shadow-glow' : ''}`} onClick={() => updateFilter('size', s)}>{s}</button>
+                        <button
+                            key={s}
+                            className={`history-btn ${filters.size === s ? 'active' : ''}`}
+                            onClick={() => updateFilter('size', s)}
+                        >
+                            {s}
+                        </button>
                     ))}
                 </div>
             </div>
@@ -131,11 +146,22 @@ const HistoryPage: React.FC = () => {
             {showFilters && (
                 <div ref={filtersRef} className="filters-panel">
                     <div className="filters-grid">
-                        <div className="filter-group"><label>От</label><input type="date" className="history-input" value={filters.date_from} onChange={e => updateFilter('date_from', e.target.value)} /></div>
-                        <div className="filter-group"><label>До</label><input type="date" className="history-input" value={filters.date_to} onChange={e => updateFilter('date_to', e.target.value)} /></div>
-                        <div className="filter-group"><label>Логин</label><input type="text" className="history-input" placeholder="user123" value={filters.login} onChange={e => updateFilter('login', e.target.value)} /></div>
-                        <div className="filter-group"><label>Платформа ID</label><input type="number" className="history-input" placeholder="123" value={filters.platform || ''} onChange={e => updateFilter('platform', Number(e.target.value) || undefined)} /></div>
-                        <div className="filter-group"><label>Продукт ID</label><input type="number" className="history-input" placeholder="456" value={filters.product || ''} onChange={e => updateFilter('product', Number(e.target.value) || undefined)} /></div>
+                        <div className="filter-group">
+                            <label>От</label>
+                            <input type="date" className="history-input" value={filters.date_from} onChange={e => updateFilter('date_from', e.target.value)} />
+                        </div>
+                        <div className="filter-group">
+                            <label>До</label>
+                            <input type="date" className="history-input" value={filters.date_to} onChange={e => updateFilter('date_to', e.target.value)} />
+                        </div>
+                        <div className="filter-group">
+                            <label>Логин</label>
+                            <input type="text" className="history-input" placeholder="user123" value={filters.login} onChange={e => updateFilter('login', e.target.value)} />
+                        </div>
+                        <div className="filter-group">
+                            <label>Платформа ID</label>
+                            <input type="number" className="history-input" placeholder="ID" value={filters.platform || ''} onChange={e => updateFilter('platform', Number(e.target.value) || undefined)} />
+                        </div>
                         <div className="filter-group">
                             <label>Статус</label>
                             <select className="history-select" value={filters.legacy_synced ?? ''} onChange={e => updateFilter('legacy_synced', e.target.value === '' ? undefined : Number(e.target.value))}>
@@ -145,14 +171,14 @@ const HistoryPage: React.FC = () => {
                                 <option value="-1">❌ Ошибка</option>
                             </select>
                         </div>
-                        <div className="filter-group">
-                            <label className="flex items-center gap-2 cursor-pointer mt-6">
-                                <input type="checkbox" className="w-4 h-4 rounded accent-connected" checked={filters.is_overwrite || false} onChange={e => updateFilter('is_overwrite', e.target.checked)} />
+                        <div className="filter-group checkbox-group">
+                            <label className="checkbox-label">
+                                <input type="checkbox" checked={filters.is_overwrite || false} onChange={e => updateFilter('is_overwrite', e.target.checked)} />
                                 <span>Перезапись</span>
                             </label>
                         </div>
                     </div>
-                    <div className="filter-actions mt-4 border-t pt-4">
+                    <div className="filter-actions">
                         <button className="history-btn" onClick={resetFilters}>🔄 Сбросить все фильтры</button>
                     </div>
                 </div>
@@ -163,10 +189,12 @@ const HistoryPage: React.FC = () => {
                     <thead>
                     <tr>
                         {columns.map(col => (
-                            <th key={col.key} className="history-th cursor-pointer hover:bg-gray-100/10 transition-colors" onClick={() => handleSort(col.key)}>
-                                <div className="flex items-center gap-1">
+                            <th key={col.key} className="history-th sortable" onClick={() => handleSort(col.key)}>
+                                <div className="th-content">
                                     {col.label}
-                                    <span className="text-xs">{filters.sort === col.key ? (filters.order === 'asc' ? '🔼' : '🔽') : '↕️'}</span>
+                                    <span className="sort-icon">
+                                            {filters.sort === col.key ? (filters.order === 'asc' ? '🔼' : '🔽') : '↕️'}
+                                        </span>
                                 </div>
                             </th>
                         ))}
@@ -174,18 +202,27 @@ const HistoryPage: React.FC = () => {
                     </thead>
                     <tbody>
                     {loading ? (
-                        <tr><td colSpan={6} className="text-center p-10"><div className="spinner"></div>Загрузка данных...</td></tr>
+                        <tr>
+                            <td colSpan={6} className="loading-state">
+                                <div className="spinner"></div>
+                                <span>Загрузка данных...</span>
+                            </td>
+                        </tr>
                     ) : history.items.length === 0 ? (
-                        <tr><td colSpan={6} className="empty-state">Нет записей по выбранным фильтрам</td></tr>
+                        <tr>
+                            <td colSpan={6} className="empty-state">Нет записей по выбранным фильтрам</td>
+                        </tr>
                     ) : (
                         history.items.map(item => (
                             <tr key={item.id}>
-                                <td className="history-td font-mono text-sm">#{item.id}</td>
+                                <td className="history-td font-mono">#{item.id}</td>
                                 <td className="history-td font-semibold">{item.login}</td>
-                                <td className="history-td"><span className="platform-badge">{item.platform}</span></td>
+                                <td className="history-td">
+                                    <span className="platform-badge">{item.platform}</span>
+                                </td>
                                 <td className="history-td font-mono">{item.product ?? '—'}</td>
                                 <td className="history-td">{getStatusBadge(item.legacy_synced)}</td>
-                                <td className="history-td text-sm opacity-80">
+                                <td className="history-td time-cell">
                                     {new Date(item.timestamp).toLocaleString('ru-RU')}
                                 </td>
                             </tr>
@@ -197,9 +234,23 @@ const HistoryPage: React.FC = () => {
 
             {history.pages > 1 && (
                 <div className="pagination">
-                    <button className="pagination-btn" disabled={filters.page === 1} onClick={() => updateFilter('page', filters.page - 1)}>← Назад</button>
-                    <span className="pagination-info">Стр. {filters.page} из {history.pages}</span>
-                    <button className="pagination-btn" disabled={filters.page === history.pages} onClick={() => updateFilter('page', filters.page + 1)}>Вперед →</button>
+                    <button
+                        className="pagination-btn"
+                        disabled={filters.page === 1}
+                        onClick={() => updateFilter('page', filters.page - 1)}
+                    >
+                        ← Назад
+                    </button>
+                    <span className="pagination-info">
+                        Стр. {filters.page} из {history.pages}
+                    </span>
+                    <button
+                        className="pagination-btn"
+                        disabled={filters.page === history.pages}
+                        onClick={() => updateFilter('page', filters.page + 1)}
+                    >
+                        Вперед →
+                    </button>
                 </div>
             )}
         </div>

@@ -1,100 +1,102 @@
-import { useCallback, useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Header from '../components/Header';
 import PairList from '../components/PairList';
 import { useWS } from '../context/WSContext';
 import type { PlatformId, ProductScan } from '../types';
-
-const LS_KEY_PRODUCTS = 'scanner_products';
-const LS_KEY_PLATFORM = 'scanner_selected_platform';
-const PAIRS_TTL_MS = 10 * 60 * 1000;
+import './styles/Dashboard.css';
 
 export default function Dashboard() {
+    const { messages, historyToday, isLoadingHistory } = useWS();
     const [selectedPlatform, setSelectedPlatform] = useState<PlatformId | null>(null);
     const [products, setProducts] = useState<ProductScan[]>([]);
-    const [scannersCount, setScannersCount] = useState(0);
-    const hasScannersConnectedRef = useRef(false);
+    const platformRef = useRef<PlatformId | null>(null);
 
-    const { messages } = useWS();
+    useEffect(() => {
+        platformRef.current = selectedPlatform;
+    }, [selectedPlatform]);
 
-    // handleWS на основе messages (реакт на новые)
+    // 1. СИНХРОНИЗАЦИЯ С API (История — без анимации)
+    useEffect(() => {
+        if (historyToday.length > 0) {
+            const platformFromHistory = historyToday[0].platform as PlatformId;
+            setSelectedPlatform(platformFromHistory);
+
+            const mapped = historyToday.map(item => ({
+                product: item.product,
+                scanId: item.id,
+                timestamp: 0 // Ставим 0, чтобы чипы знали, что это история
+            }));
+
+            setProducts(prev => {
+                const historyIds = new Set(mapped.map(p => p.scanId));
+                const wsOnly = prev.filter(p => !historyIds.has(p.scanId));
+                return [...wsOnly, ...mapped];
+            });
+        }
+    }, [historyToday]);
+
+    // 2. ОБРАБОТКА WS СОБЫТИЙ (Мгновенная реакция — с анимацией)
     useEffect(() => {
         if (messages.length === 0) return;
-        const latestMsg = messages[messages.length - 1];
-        console.log('Latest WS msg:', latestMsg);
+        const latestMsg = messages[messages.length - 1] as any;
+        const event = latestMsg.event || latestMsg.type;
+        const payload = latestMsg.data || latestMsg;
 
-        try {
-            const event = (latestMsg as any).event || (latestMsg as any).type;
-            if (event === 'scanner_connected' && !hasScannersConnectedRef.current) {
-                hasScannersConnectedRef.current = true;
-                setScannersCount(1); // Только +1 на первое подключение
-                return;
+        // А) Смена платформы
+        if (event === 'change_platform') {
+            const newPid = payload.platform || payload.current_platform;
+            if (newPid) setSelectedPlatform(newPid as PlatformId);
+
+            let rawItems = payload.items || payload.products;
+            if (!rawItems && payload.pairs && newPid) {
+                rawItems = payload.pairs[newPid] || payload.pairs[String(newPid)];
             }
-            if (event === 'new_product' || event === 'new_pair') {
-                const data = (latestMsg as any).data || latestMsg;
-                const platform = data.platform || data.data?.platform;
-                const productObj = data.product || data.data?.product;
-                const product = typeof productObj === 'object' ? productObj.id : productObj;
-                const scanId = data.scanId || Date.now();
-                console.log('Parsed new_pair:', { platform, product, scanId });
-                if (selectedPlatform === null) setSelectedPlatform(platform);
-                if (selectedPlatform !== null && platform === selectedPlatform) {
-                    setProducts((prev) => [{ product, scanId }, ...prev.slice(0, 9)]);
-                }
-                return;
+
+            if (rawItems && Array.isArray(rawItems)) {
+                setProducts(rawItems.map((p: any) => ({
+                    product: p.product || p.id,
+                    scanId: p.scan_id || p.scanId || p.id,
+                    timestamp: 0 // Смена платформы обычно загружает пачку данных, не подсвечиваем всё
+                })));
             }
-            if (event === 'change_platform') {
-                const data = (latestMsg as any).data || latestMsg;
-                const platform = data.platform;
-                // Фикс: берём массив из data.pairs[platform] (PlatformMap)
-                const pairsArray = data.pairs?.[platform] || data.products || [];
-                setSelectedPlatform(platform);
-                const list = Array.isArray(pairsArray) ? pairsArray : []; // Безопасная проверка
-                setProducts(list.map((p: any) => ({ product: p.product || p.id, scanId: p.scanId || p.id })));
-                console.log('Parsed change_platform:', { platform, productsCount: list.length });
-                return;
-            }
-        } catch (e) {
-            console.error('Ошибка обработки WS msg:', e, latestMsg); // Лог ошибки, но не вылет
+            return;
         }
-    }, [messages, selectedPlatform]);
 
-    useEffect(() => {
-        try {
-            const storedPlatform = localStorage.getItem(LS_KEY_PLATFORM);
-            if (storedPlatform !== null) {
-                const platformValue = Number(storedPlatform);
-                if (!Number.isNaN(platformValue)) setSelectedPlatform(platformValue as PlatformId);
-            }
-            const storedProducts = localStorage.getItem(LS_KEY_PRODUCTS);
-            if (storedProducts) {
-                const parsed = JSON.parse(storedProducts) as { products: ProductScan[]; ts: number };
-                const now = Date.now();
-                if (parsed && Array.isArray(parsed.products) && typeof parsed.ts === 'number' && now - parsed.ts <= PAIRS_TTL_MS) {
-                    setProducts(parsed.products);
-                } else {
-                    localStorage.removeItem(LS_KEY_PRODUCTS);
+        // Б) Новый пик (Самый важный момент для анимации)
+        if (event === 'new_product' || event === 'new_pair' || payload.product) {
+            const msgPlatform = payload.platform || payload.current_platform;
+            const currentP = platformRef.current;
+
+            if (Number(msgPlatform) === Number(currentP) || currentP === null) {
+                const rawProduct = payload.product;
+                const productValue = typeof rawProduct === 'object' ? rawProduct.id : rawProduct;
+                const scanId = payload.scan_id || payload.scanId || payload.id || Date.now();
+
+                if (productValue) {
+                    setProducts(prev => {
+                        if (prev.some(p => p.scanId === scanId)) return prev;
+                        // Добавляем текущее время для активации анимации в чипе
+                        return [{
+                            product: productValue,
+                            scanId,
+                            timestamp: Date.now()
+                        }, ...prev];
+                    });
                 }
             }
-        } catch (e) {
-            console.error('Ошибка чтения из localStorage', e);
         }
-    }, []);
-
-    useEffect(() => {
-        try {
-            if (selectedPlatform !== null) localStorage.setItem(LS_KEY_PLATFORM, String(selectedPlatform));
-            localStorage.setItem(LS_KEY_PRODUCTS, JSON.stringify({ products, ts: Date.now() }));
-        } catch (e) {
-            console.error('Ошибка сохранения в localStorage', e);
-        }
-    }, [products, selectedPlatform]);
+    }, [messages]);
 
     return (
-        <div className="page">
+        <div className="dashboard-page">
             <Header title="Мониторинг" />
-            {/* Простой статус сканнеров — мелко, под заголовком */}
-            <div className="status-text" style={{ marginBottom: 12, fontSize: '0.9rem', opacity: 0.8 }}>
-                Подключено сканнеров: {scannersCount || 1}
+            <div className="dashboard-status-info">
+                {isLoadingHistory && <span className="sync-loader">🔄 Загрузка истории... </span>}
+                {selectedPlatform ? (
+                    <span className="platform-active-tag">Платформа №{selectedPlatform} — Активна</span>
+                ) : (
+                    <span>Ожидание сканера...</span>
+                )}
             </div>
             <PairList platform={selectedPlatform} products={products} />
         </div>

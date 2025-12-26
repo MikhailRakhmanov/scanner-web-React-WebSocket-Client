@@ -1,0 +1,142 @@
+/* 🔧 ГЛОБАЛЬНАЯ СТРУКТУРА (Layout) */
+.app {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.app .main-container {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    width: 100%;
+}
+
+.app .main {
+    flex: 1;
+    overflow: auto;
+    padding: 1rem;
+    margin-left: 0;
+    width: 100%;
+}
+
+.app .sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 999;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(4px);
+}
+
+/* Повышаем вес через комбинацию классов */
+.app .sidebar-overlay.open {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+/* 🃏 ОБЩИЕ UI КОМПОНЕНТЫ */
+.app .card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: var(--shadow);
+}
+
+.app .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.75rem;
+}
+
+.app .card-title { font-weight: 700; color: var(--text-primary); }
+
+.app .card-badge {
+    background: rgba(0, 242, 255, 0.1);
+    color: var(--accent-connected);
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+}
+
+/* Стили кнопок с уточнением через родителя .app */
+.app .btn {
+    background: transparent;
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    padding: 0.75rem 1.25rem;
+    border-radius: 8px;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.app .btn:hover:not(:disabled) {
+    background: var(--text-primary);
+    color: #000;
+}
+
+.app .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.app .status-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent-danger);
+    margin-right: 0.5rem;
+}
+
+.app .status-dot.connected {
+    background: var(--accent-connected);
+    box-shadow: 0 0 8px rgba(0, 242, 255, 0.4);
+}
+
+/* 📱 АДАПТИВНОСТЬ */
+@media (min-width: 769px) {
+    .app { flex-direction: row; }
+    /* Используем вложенность для перебивания стандартных состояний */
+    .app .sidebar-overlay { display: none; }
+}
+
+@media (max-width: 768px) {
+    .app {
+        flex-direction: column;
+        position: relative;
+    }
+    .app .main { padding: 0.75rem; }
+}
+
+/* Скрываем кнопку вызова сайдбара на десктопе */
+@media (min-width: 769px) {
+    .app .sidebar-toggle-btn {
+        display: none;
+    }
+}
+
+/* Группировка элементов в правой части хедера */
+.header-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1rem;
+    height: 60px;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}

@@ -1,5 +1,4 @@
-// ScannerStatusContext.tsx
-import React, { createContext, useContext, useState, type ReactNode } from 'react';
+import  { createContext, useContext, useState, type ReactNode } from 'react';
 
 interface ScannerContextType {
     scannerStatus: 'connected' | 'refused' | 'unknown';

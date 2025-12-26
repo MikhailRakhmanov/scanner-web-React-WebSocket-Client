@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom';
+import './styles/Sidebar.css'; // Импорт локальных стилей
 
 type Props = {
     isOpen: boolean;

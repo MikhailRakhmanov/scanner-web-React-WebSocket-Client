@@ -1,4 +1,5 @@
-import React from 'react';
+
+import './styles/ScannerStatus.css';
 
 type Props = {
     scannerStatus: 'connected' | 'refused' | 'unknown';
@@ -10,20 +11,18 @@ export function ScannerStatus({ scannerStatus, url, onReconnect }: Props) {
     const isConnected = scannerStatus === 'connected';
 
     return (
-        <div className="status" title={url} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '12px' }}>
+        <div className="scanner-status-container" title={url}>
             <span className={`status-dot ${isConnected ? 'connected' : 'refused'}`} />
-            <span className="status-text" style={{ fontSize: '14px', whiteSpace: 'nowrap' }}>
+            <span className={`scanner-status-text ${scannerStatus}`}>
                 {scannerStatus === 'connected' ? 'Сканнер подключен' :
                     scannerStatus === 'refused' ? 'Сканнер отключен' :
                         'Поиск сканнера...'}
             </span>
 
-            {/* Показываем кнопку только если нет связи с сервером (refused) */}
             {scannerStatus === 'refused' && (
                 <button
-                    className="btn"
+                    className="btn reconnect-btn"
                     onClick={onReconnect}
-                    style={{ padding: '4px 8px', fontSize: '12px' }}
                 >
                     Повторить
                 </button>

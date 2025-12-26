@@ -9,90 +9,86 @@ export interface UseWebSocketProps {
     onMessage?: (data: unknown) => void;
 }
 
-export function useWebSocket({ maxRetries = 10, autoReconnect = true, onMessage }: UseWebSocketProps = {}) {
+export function useWebSocket({ maxRetries = 50, autoReconnect = true, onMessage }: UseWebSocketProps = {}) {
     const wsRef = useRef<WebSocket | null>(null);
     const retriesRef = useRef(0);
+    const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null); // Для отмены реконнекта
     const closedByUserRef = useRef(false);
     const [isConnected, setIsConnected] = useState(false);
-    const [lastMessage, setLastMessage] = useState<unknown>(null);
-    const url = useMemo(() => BACKEND_WS_URL + '/ws', []);
-    const onMessageRef = useRef(onMessage); // Ref для onMessage, чтобы избежать ререндеров
 
-    onMessageRef.current = onMessage; // Обновляем ref при изменении
+    const url = useMemo(() => BACKEND_WS_URL + '/ws', []);
+    const onMessageRef = useRef(onMessage);
+    onMessageRef.current = onMessage;
 
     const cleanup = useCallback(() => {
+        if (reconnectTimerRef.current) {
+            clearTimeout(reconnectTimerRef.current);
+            reconnectTimerRef.current = null;
+        }
         if (wsRef.current) {
             wsRef.current.onopen = null;
             wsRef.current.onclose = null;
             wsRef.current.onmessage = null;
             wsRef.current.onerror = null;
-            try { wsRef.current.close(); } catch {}
+            try {
+                if (wsRef.current.readyState !== WebSocket.CLOSED) {
+                    wsRef.current.close();
+                }
+            } catch (e) { /* ignore */ }
             wsRef.current = null;
         }
     }, []);
 
     const connect = useCallback(() => {
         const token = auth.getToken();
-        console.log('Attempt connect: token present?', !!token);
         if (!token) {
-            console.warn('No token — skip WS register');
             setIsConnected(false);
             return;
         }
-        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-            console.log('Already connected — skip');
+
+        if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) {
             return;
         }
+
         cleanup();
         closedByUserRef.current = false;
-        console.log('Creating WS to', url);
-        const ws = new WebSocket(url);
-        wsRef.current = ws;
 
-        ws.onopen = () => {
-            console.log('WS opened — sending register');
-            setIsConnected(true);
-            retriesRef.current = 0;
-            const registerMsg = { event: 'register', token: token, is_input: false };
-            ws.send(JSON.stringify(registerMsg));
-            console.log('Sent register with token:', registerMsg);
-        };
+        try {
+            const ws = new WebSocket(url);
+            wsRef.current = ws;
 
-        ws.onmessage = (event) => {
-            try {
-                const data = JSON.parse(event.data);
-                console.log(`WS Received:`, data);
+            ws.onopen = () => {
+                setIsConnected(true);
+                retriesRef.current = 0;
+                onMessageRef.current?.({ event: 'register_start' });
+                ws.send(JSON.stringify({ event: 'register', token, is_input: false }));
+            };
 
-                // ✅ Если бэк выдал JWT — сохраняем его!
-                if (data.token && data.login) {
-                    auth.setToken(data.token);
-                    auth.setLogin(data.login);
-                    console.log('✅ WS Auth success:', data.login);
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.token && data.login) {
+                        auth.setToken(data.token);
+                        auth.setLogin(data.login);
+                    }
+                    onMessageRef.current?.(data);
+                } catch (e) {
+                    console.error('WS Parse error:', e);
                 }
+            };
 
-                setLastMessage(data);
-                onMessageRef.current?.(data);
-            } catch (e) {
-                console.error('Parse error:', e);
-            }
-        };
-
-        ws.onclose = (event) => {
-            console.log('WS closed:', { code: event.code, reason: event.reason, wasClean: event.wasClean });
-            setIsConnected(false);
-            if (!closedByUserRef.current && autoReconnect) {
-                const attempt = retriesRef.current;
-                if (attempt < maxRetries) {
-                    const timeout = Math.min(30000, 1000 * Math.pow(2, attempt));
-                    console.log(`Reconnect #${attempt + 1} in ${timeout}ms (code: ${event.code})`);
+            ws.onclose = () => {
+                setIsConnected(false);
+                if (!closedByUserRef.current && autoReconnect && retriesRef.current < maxRetries) {
+                    const timeout = Math.min(30000, 1000 * Math.pow(2, retriesRef.current));
                     retriesRef.current += 1;
-                    setTimeout(connect, timeout); // Без deps
-                } else {
-                    console.error('Max retries — WS failed');
+                    reconnectTimerRef.current = setTimeout(connect, timeout);
                 }
-            }
-        };
-    }, [cleanup, maxRetries, autoReconnect, url]); // Убрал onMessage из deps
+            };
+        } catch (e) {
+            console.error("WS Connection error:", e);
+        }
+    }, [cleanup, maxRetries, autoReconnect, url]);
 
     const disconnect = useCallback(() => {
         closedByUserRef.current = true;
@@ -100,21 +96,16 @@ export function useWebSocket({ maxRetries = 10, autoReconnect = true, onMessage 
         setIsConnected(false);
     }, [cleanup]);
 
-    const sendJson = useCallback((payload: unknown) => {
-        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-            wsRef.current.send(JSON.stringify(payload));
-            return true;
-        }
-        return false;
-    }, []);
-
     useEffect(() => {
-        const timer = setTimeout(connect, 500);
-        return () => {
-            clearTimeout(timer);
-            disconnect();
-        };
-    }, []); // Пустые deps: монтирование/демонтирование
+        connect();
+        // Убрали автоматический disconnect при unmount, чтобы сокет жил при навигации
+    }, [connect]);
 
-    return { isConnected, lastMessage, sendJson, reconnect: connect, disconnect, url };
+    return {
+        isConnected,
+        sendJson: (p: unknown) => wsRef.current?.readyState === WebSocket.OPEN && wsRef.current.send(JSON.stringify(p)),
+        reconnect: connect,
+        disconnect,
+        url
+    };
 }
